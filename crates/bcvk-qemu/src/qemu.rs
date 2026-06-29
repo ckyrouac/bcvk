@@ -469,9 +469,8 @@ impl QemuConfig {
     /// Inbound `hostfwd` rules still work. Has no effect if called before
     /// `enable_ssh_access` because that method resets `network_mode`.
     pub fn set_network_restrict(&mut self, restrict: bool) -> &mut Self {
-        if let NetworkMode::User { restrict: r, .. } = &mut self.network_mode {
-            *r = restrict;
-        }
+        let NetworkMode::User { restrict: r, .. } = &mut self.network_mode;
+        *r = restrict;
         self
     }
 
