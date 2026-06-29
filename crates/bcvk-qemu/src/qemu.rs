@@ -99,12 +99,18 @@ pub enum NetworkMode {
     User {
         /// Port forwarding rules: "tcp::2222-:22" format.
         hostfwd: Vec<String>,
+        /// Block all outbound internet from the guest (slirp `restrict=on`).
+        /// Inbound `hostfwd` rules (e.g. SSH) still work.
+        restrict: bool,
     },
 }
 
 impl Default for NetworkMode {
     fn default() -> Self {
-        NetworkMode::User { hostfwd: vec![] }
+        NetworkMode::User {
+            hostfwd: vec![],
+            restrict: false,
+        }
     }
 }
 
@@ -454,7 +460,18 @@ impl QemuConfig {
         let hostfwd = format!("tcp::{}-:22", port); // Forward host port to guest port 22
         self.network_mode = NetworkMode::User {
             hostfwd: vec![hostfwd],
+            restrict: false,
         };
+        self
+    }
+
+    /// Set whether outbound internet is blocked for the guest (slirp `restrict=on`).
+    /// Inbound `hostfwd` rules still work. Has no effect if called before
+    /// `enable_ssh_access` because that method resets `network_mode`.
+    pub fn set_network_restrict(&mut self, restrict: bool) -> &mut Self {
+        if let NetworkMode::User { restrict: r, .. } = &mut self.network_mode {
+            *r = restrict;
+        }
         self
     }
 
@@ -679,8 +696,12 @@ fn spawn(
 
     // Configure network (only User mode supported now)
     match &config.network_mode {
-        NetworkMode::User { hostfwd } => {
+        NetworkMode::User { hostfwd, restrict } => {
             let mut netdev_parts = vec!["user".to_string(), "id=net0".to_string()];
+
+            if *restrict {
+                netdev_parts.push("restrict=on".to_string());
+            }
 
             // Add port forwarding rules
             for fwd in hostfwd {

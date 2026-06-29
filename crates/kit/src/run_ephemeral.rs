@@ -225,6 +225,13 @@ pub struct CommonVmOpts {
         help = "Path to virtiofsd binary (overrides auto-detection)"
     )]
     pub virtiofsd_binary: Option<String>,
+
+    #[clap(
+        long = "restrict-network",
+        help = "Block all outbound internet from the VM (QEMU slirp `restrict=on`). \
+                Inbound port-forwards (SSH, etc.) still work."
+    )]
+    pub restrict_network: bool,
 }
 
 impl CommonVmOpts {
@@ -1566,6 +1573,7 @@ Options=
 
     if opts.common.ssh_keygen {
         qemu_config.enable_ssh_access(None); // Use default port 2222
+        qemu_config.set_network_restrict(opts.common.restrict_network);
         debug!("Enabled SSH port forwarding: host port 2222 -> guest port 22");
 
         // We need to extract the public key from the SSH credential to inject it via SMBIOS

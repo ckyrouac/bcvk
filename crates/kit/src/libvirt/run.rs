@@ -272,6 +272,12 @@ pub struct LibvirtRunOpts {
     #[clap(long = "bind-storage-ro")]
     pub bind_storage_ro: bool,
 
+    /// Block all outbound internet from the VM (QEMU slirp `restrict=on`).
+    /// Inbound port-forwards (SSH, etc.) still work. Use this to enforce
+    /// that tests do not pull from the network during test execution.
+    #[clap(long = "restrict-network")]
+    pub restrict_network: bool,
+
     /// Implies --bind-storage-ro, but also configure to update from the host
     /// container storage by default.
     #[clap(long, conflicts_with = "target_transport")]
@@ -1462,7 +1468,12 @@ fn create_libvirt_domain_from_disk(
     }
 
     let netdev_config = format!(
-        "user,id=ssh0,{}",
+        "user,id=ssh0,{}{}",
+        if opts.restrict_network {
+            "restrict=on,"
+        } else {
+            ""
+        },
         hostfwd_args
             .iter()
             .map(|fwd| format!("hostfwd={}", fwd))
